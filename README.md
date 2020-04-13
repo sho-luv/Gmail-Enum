@@ -10,7 +10,7 @@
 I forked this project from https://github.com/H3LL0WORLD/Gmail-Enum and simply made some modifications to suite my needs. 
 A fairly descent/fast go program to enumerate gmail accounts using a glitch by [@x0rz](https://twitter.com/x0rz) as described [here](https://blog.0day.rocks/abusing-gmail-to-get-previously-unlisted-e-mail-addresses-41544b62b2)
 
-<img src="https://github.com/sho-luv/Gmail-Enum/blob/master/img/gmail-enum.gif" alt="gmail-enum" />
+<img src="https://github.com/sho-luv/gmailprob/blob/master/img/gmailenum.gif" alt="gmailenum" />
 
 ### Requirements:
 - [Golang](https://golang.org)
