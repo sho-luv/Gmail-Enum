@@ -8,16 +8,19 @@ A fairly descent/fast go program to enumerate gmail accounts using a glitch by [
 ```sh
 $ go build
 
-$ ./Gmail_Enum
-Usage of ./Gmail_Enum:
+$ ./Gmail-Enum 
+Usage of ./Gmail-Enum:
+  -I string
+    	File of accounts to test
   -d string
-        Append domain to every address (empty to no append) (default "gmail.com")
+    	Append domain to every address (empty to no append)
   -i string
-        List of accounts to test
+    	account to test
   -o string
-        Output file (default: Stdout)
+    	Output file (default: Stdout)
+  -r	Remove gmail address' invalid chars
   -stdin
-        Read accounts from stdin
+    	Read accounts from stdin
   -t int
-        Number of threads (default 10)
+    	Number of threads (default 10)
 ```
