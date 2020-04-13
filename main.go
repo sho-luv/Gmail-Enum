@@ -20,6 +20,7 @@ type Result struct {
 }
 
 var (
+	inputAccount string
 	inputFile  string
 	outputFile string
 	domain     string
@@ -30,16 +31,25 @@ var (
 	headers    map[string]string
 )
 
+const (
+        InfoColor    = "\033[1;34m%s\033[0m"
+        NoticeColor  = "\033[1;36m%s\033[0m"
+        WarningColor = "\033[1;33m%s\033[0m"
+        ErrorColor   = "\033[1;31m%s\033[0m"
+        DebugColor   = "\033[0;36m%s\033[0m"
+)
+
 func init() {
-	flag.StringVar(&inputFile, "i", "", "List of accounts to test")
+	flag.StringVar(&inputFile, "I", "", "File of accounts to test")
+	flag.StringVar(&inputAccount, "i", "", "accounts to test")
 	flag.StringVar(&outputFile, "o", "", "Output file (default: Stdout)")
-	flag.StringVar(&domain, "d", "gmail.com", "Append domain to every address (empty to no append)")
+	flag.StringVar(&domain, "d", "", "Append domain to every address (empty to no append)")
 	flag.BoolVar(&stdin, "stdin", false, "Read accounts from stdin")
 	flag.BoolVar(&validChars, "r", false, "Remove gmail address' invalid chars")
 	flag.IntVar(&threads, "t", 10, "Number of threads")
 	flag.Parse()
 
-	if inputFile == "" && !stdin {
+	if inputFile == "" && inputAccount == "" && !stdin {
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -88,7 +98,11 @@ func TestAddress(addr string, resChan chan<- Result) {
 	resp.Body.Close()
 
 	found := len(resp.Cookies()) > 0
+	//fmt.Print(found,"\n")
+	//fmt.Print(addr,"\n")
 	resChan <- Result{found, addr}
+	//fmt.Print(addr,"\n")
+	return
 }
 
 func main() {
@@ -103,7 +117,7 @@ func main() {
 	if stdin {
 		input = os.Stdin
 		inputFile = "stdin"
-	} else {
+	} else if inputFile != "" {
 		f, err := os.Open(inputFile)
 		if err != nil {
 			fmt.Printf("[!] Error opening file '%s'\n", inputFile)
@@ -111,10 +125,15 @@ func main() {
 		}
 		input = f
 		defer f.Close()
+	} else {
+		inputFile = "single"
+
 	}
 
+	// if an output file is provided redirect output to file
 	out, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE, os.ModeAppend)
 	if err != nil {
+		// if no file provided redirect to stdout
 		out = os.Stdout
 	}
 	defer out.Close()
@@ -128,10 +147,6 @@ func main() {
 	for i := 0; i < threads; i++ {
 		go func() {
 			for addr := range addrChan {
-				if addr == "" {
-					break
-				}
-
 				// Append domain to address
 				if domain != "" {
 					addr += "@" + domain
@@ -148,22 +163,33 @@ func main() {
 		threadsG.Add(1)
 	}
 
-	scanner := bufio.NewScanner(input)
-	scanner.Split(bufio.ScanLines)
+	// if not single then iterate through stdin or file
+	if inputFile != "single" {
+		scanner := bufio.NewScanner(input)
+		scanner.Split(bufio.ScanLines)
 
-	go func() {
-		for scanner.Scan() {
-			addr := strings.TrimSpace(scanner.Text())
-			// Skip comments and empty lines
-			if !strings.HasPrefix(addr, "#") && addr != "" {
-				addrChan <- addr
+		go func() {
+			for scanner.Scan() {
+				addr := strings.TrimSpace(scanner.Text())
+				// Skip comments and empty lines
+				if !strings.HasPrefix(addr, "#") && addr != "" {
+					addrChan <- addr
+				}
 			}
-		}
 
-		close(addrChan)
-		threadsG.Wait()
-		close(resultsChan)
+			close(addrChan)
+			threadsG.Wait()
+			close(resultsChan)
+		}()
+	// else single email test
+	} else if inputAccount != "" {
+		go func() {
+			addrChan <- inputAccount
+			close(addrChan)
+			threadsG.Wait()
+			close(resultsChan)
 	}()
+	}
 
 	tested, found := 0, 0
 	for result := range resultsChan {
@@ -174,9 +200,12 @@ func main() {
 				// 'Flush' stdout
 				fmt.Printf("%100s\r", "")
 			}
-			fmt.Fprintln(out, result.Address)
+			// print found emails in yellow
+			fmt.Fprintln(out, fmt.Sprintf(WarningColor, result.Address))
 		}
 
 		fmt.Printf("[*] Tested: %d, Found: %d\r", tested, found)
 	}
+	fmt.Printf("[*] Tested: %d, Found: %d\n", tested, found)
+
 }
